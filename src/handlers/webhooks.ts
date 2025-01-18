@@ -14,6 +14,7 @@ export class WebhookHandler {
   ) {}
 
   async handleRegistration(req: Request, res: Response) {
+    console.log('Registration webhook received:', req.body);
     try {
       const { id, eventId } = req.body;
       console.log('Received registration webhook for id:', id);
@@ -61,6 +62,7 @@ export class WebhookHandler {
   }
 
   async handleSessionActivity(req: Request, res: Response) {
+    console.log('Session activity webhook received:', req.body);
     try {
       const activity: AirmeetSessionActivity & { eventId: string } = req.body;
       console.log('Received session activity webhook:', activity);
@@ -97,6 +99,7 @@ export class WebhookHandler {
   }
 
   async handleBoothActivity(req: Request, res: Response) {
+    console.log('Booth activity webhook received:', req.body);
     try {
       const activity: AirmeetBoothActivity & { eventId: string } = req.body;
       console.log('Received booth activity webhook:', activity);

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 
 export function verifyWebhookSignature(req: Request, res: Response, next: NextFunction) {
+    console.log('Received webhook request with headers:', req.headers);
     const signature = req.headers['x-webhook-signature'] as string;
     const webhookSecret = process.env.WEBHOOK_SECRET;
 
@@ -18,11 +19,15 @@ export function verifyWebhookSignature(req: Request, res: Response, next: NextFu
     try {
         // Get the raw body
         const rawBody = JSON.stringify(req.body);
+        console.log('Raw body:', rawBody);
         
         // Create HMAC
         const hmac = crypto.createHmac('sha256', webhookSecret);
         hmac.update(rawBody);
         const calculatedSignature = hmac.digest('hex');
+        
+        console.log('Received signature:', signature);
+        console.log('Calculated signature:', calculatedSignature);
 
         // Time-safe string comparison
         if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(calculatedSignature))) {
@@ -30,6 +35,7 @@ export function verifyWebhookSignature(req: Request, res: Response, next: NextFu
             return res.status(401).json({ error: 'Invalid webhook signature' });
         }
 
+        console.log('Webhook signature verified successfully');
         next();
     } catch (error) {
         console.error('Error verifying webhook signature:', error);

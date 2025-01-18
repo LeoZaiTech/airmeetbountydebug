@@ -9,7 +9,8 @@
 }
 
 .status-success {
-    color: #10B981;
+    background-color: #10B981;
+    color: white;
 }
 
 .status-pending {
@@ -27,10 +28,31 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(-10px);
     }
     to {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Table styles */
+.overflow-x-auto {
+    min-height: 200px;
+}
+
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    background-color: #F9FAFB;
+    z-index: 10;
+}
+
+tbody tr:hover {
+    background-color: #F9FAFB;
 }

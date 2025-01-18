@@ -9,6 +9,7 @@ class WebhookHandler {
         this.notificationService = notificationService;
     }
     async handleRegistration(req, res) {
+        console.log('Registration webhook received:', req.body);
         try {
             const { id, eventId } = req.body;
             console.log('Received registration webhook for id:', id);
@@ -49,6 +50,7 @@ class WebhookHandler {
         }
     }
     async handleSessionActivity(req, res) {
+        console.log('Session activity webhook received:', req.body);
         try {
             const activity = req.body;
             console.log('Received session activity webhook:', activity);
@@ -79,6 +81,7 @@ class WebhookHandler {
         }
     }
     async handleBoothActivity(req, res) {
+        console.log('Booth activity webhook received:', req.body);
         try {
             const activity = req.body;
             console.log('Received booth activity webhook:', activity);
