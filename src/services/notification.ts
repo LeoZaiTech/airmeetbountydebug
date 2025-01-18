@@ -44,13 +44,20 @@ export class NotificationService {
       }
 
       let message = template.body;
+      
       // Replace variables in template
       Object.entries(notification.variables).forEach(([key, value]) => {
-        message = message.replace(`{{${key}}}`, value);
+        const regex = new RegExp(`{{${key}}}`, 'g');
+        message = message.replace(regex, value || '');
       });
 
+      // Handle conditional blocks
+      message = this.processConditionalBlocks(message, notification.variables);
+
       // TODO: Implement actual sending logic using DevRev API
-      console.log(`Sending notification to ${notification.recipientId}:`, message);
+      console.log(`[Notification] To: ${notification.recipientId}`);
+      console.log(`[Notification] Title: ${template.title}`);
+      console.log(`[Notification] Message:\n${message}`);
 
       notification.status = 'sent';
       notification.sentAt = new Date().toISOString();
@@ -58,6 +65,14 @@ export class NotificationService {
       notification.status = 'failed';
       throw error;
     }
+  }
+
+  private processConditionalBlocks(message: string, variables: Record<string, string>): string {
+    // Process {{#if variable}}content{{/if}} blocks
+    const conditionalRegex = /{{#if\s+([^}]+)}}(.*?){{\/if}}/gs;
+    return message.replace(conditionalRegex, (match, variable, content) => {
+      return variables[variable] ? content : '';
+    });
   }
 
   async handleRegistration(registration: AirmeetRegistration, eventId: string): Promise<void> {

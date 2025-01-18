@@ -8,6 +8,8 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const webhooks_1 = require("./handlers/webhooks");
 const airmeet_1 = require("./services/airmeet");
 const devrev_1 = require("./services/devrev");
+const mapping_1 = require("./services/mapping");
+const notification_1 = require("./services/notification");
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -16,8 +18,38 @@ const port = process.env.PORT || 3000;
 // Initialize services
 const airmeetService = new airmeet_1.AirmeetService(process.env.AIRMEET_API_KEY || '');
 const devrevService = new devrev_1.DevRevService(process.env.DEVREV_API_KEY || '');
-// Initialize webhook handler with both services
-const webhookHandler = new webhooks_1.WebhookHandler(airmeetService, devrevService);
+const mappingService = new mapping_1.DataMappingService();
+// Initialize notification config
+const notificationConfig = {
+    triggers: [
+        {
+            eventType: 'registration',
+            conditions: {
+                // Notify immediately for all registrations
+                timeThreshold: 0
+            }
+        }
+    ],
+    templates: {
+        'registration_notification': {
+            id: 'registration_notification',
+            title: 'New Event Registration',
+            body: 'New registration for {{eventName}}:\n\n' +
+                'Attendee: {{attendeeName}}\n' +
+                'Email: {{attendeeEmail}}\n' +
+                'Registration Time: {{registrationTime}}\n\n' +
+                '{{#if company}}Company: {{company}}\n{{/if}}' +
+                '{{#if utmSource}}Source: {{utmSource}}\n{{/if}}',
+            priority: 'medium',
+            variables: ['eventName', 'attendeeName', 'attendeeEmail', 'registrationTime', 'company', 'utmSource']
+        }
+    },
+    accountOwnerMapping: {},
+    enabled: true
+};
+const notificationService = new notification_1.NotificationService(notificationConfig);
+// Initialize webhook handler with all services
+const webhookHandler = new webhooks_1.WebhookHandler(airmeetService, devrevService, mappingService, notificationService);
 // Root route
 app.get('/', (req, res) => {
     res.json({

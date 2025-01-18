@@ -22,8 +22,29 @@ const mappingService = new DataMappingService();
 
 // Initialize notification config
 const notificationConfig: NotificationConfig = {
-  triggers: [],
-  templates: {},
+  triggers: [
+    {
+      eventType: 'registration',
+      conditions: {
+        // Notify immediately for all registrations
+        timeThreshold: 0
+      }
+    }
+  ],
+  templates: {
+    'registration_notification': {
+      id: 'registration_notification',
+      title: 'New Event Registration',
+      body: 'New registration for {{eventName}}:\n\n' +
+            'Attendee: {{attendeeName}}\n' +
+            'Email: {{attendeeEmail}}\n' +
+            'Registration Time: {{registrationTime}}\n\n' +
+            '{{#if company}}Company: {{company}}\n{{/if}}' +
+            '{{#if utmSource}}Source: {{utmSource}}\n{{/if}}',
+      priority: 'medium',
+      variables: ['eventName', 'attendeeName', 'attendeeEmail', 'registrationTime', 'company', 'utmSource']
+    }
+  },
   accountOwnerMapping: {},
   enabled: true
 };
