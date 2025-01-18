@@ -1,9 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebhookHandler = void 0;
+const mapping_1 = require("../services/mapping");
 class WebhookHandler {
-    constructor(airmeetService) {
+    constructor(airmeetService, devrevService) {
         this.airmeetService = airmeetService;
+        this.devrevService = devrevService;
+        this.mappingService = new mapping_1.DataMappingService();
     }
     async handleRegistration(req, res) {
         try {
@@ -13,11 +16,25 @@ class WebhookHandler {
                 console.error('Missing attendeeId in request body');
                 return res.status(400).json({ error: 'Missing attendeeId in request body' });
             }
+            // Get registration data from Airmeet
             console.log('Fetching registration data from Airmeet API...');
             const registration = await this.airmeetService.getRegistration(attendeeId);
             console.log('Successfully retrieved registration data:', registration);
-            // TODO: Process registration data and sync with DevRev
-            res.status(200).json({ success: true, data: registration });
+            // Map and create/update contact in DevRev
+            const contact = this.mappingService.mapRegistrationToContact(registration);
+            const devrevContact = await this.devrevService.createOrUpdateContact(contact);
+            // Track registration activity
+            const activity = this.mappingService.mapRegistrationActivity(registration);
+            activity.contact_id = devrevContact.id;
+            await this.devrevService.trackActivity(activity);
+            // Add appropriate tags
+            const tags = this.mappingService.getActivityTags([activity]);
+            await this.devrevService.addTagsToContact(devrevContact.id, tags);
+            res.status(200).json({
+                success: true,
+                contact: devrevContact,
+                activity: activity
+            });
         }
         catch (error) {
             console.error('Registration webhook error:', {
@@ -33,14 +50,23 @@ class WebhookHandler {
     }
     async handleSessionActivity(req, res) {
         try {
-            const { attendeeId, sessionId, action } = req.body;
-            console.log('Received session activity webhook:', { attendeeId, sessionId, action });
-            if (!attendeeId || !sessionId || !action) {
+            const { attendeeId, sessionId, duration, joinTime } = req.body;
+            console.log('Received session activity webhook:', { attendeeId, sessionId, duration, joinTime });
+            if (!attendeeId || !sessionId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
-            // TODO: Process session activity and sync with DevRev
-            res.status(200).json({ success: true });
+            // Find contact in DevRev
+            const contact = await this.devrevService.findContactByEmail(attendeeId);
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found in DevRev' });
+            }
+            // Track session activity
+            const activity = this.mappingService.mapSessionAttendance(contact.id, sessionId, duration, joinTime);
+            await this.devrevService.trackActivity(activity);
+            // Add session attendee tag
+            await this.devrevService.addTagsToContact(contact.id, ['session-attendee']);
+            res.status(200).json({ success: true, activity });
         }
         catch (error) {
             console.error('Session activity webhook error:', error);
@@ -52,14 +78,23 @@ class WebhookHandler {
     }
     async handleBoothActivity(req, res) {
         try {
-            const { attendeeId, boothId, action } = req.body;
-            console.log('Received booth activity webhook:', { attendeeId, boothId, action });
-            if (!attendeeId || !boothId || !action) {
+            const { attendeeId, boothId, duration, interactions } = req.body;
+            console.log('Received booth activity webhook:', { attendeeId, boothId, duration });
+            if (!attendeeId || !boothId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
-            // TODO: Process booth activity and sync with DevRev
-            res.status(200).json({ success: true });
+            // Find contact in DevRev
+            const contact = await this.devrevService.findContactByEmail(attendeeId);
+            if (!contact) {
+                return res.status(404).json({ error: 'Contact not found in DevRev' });
+            }
+            // Track booth activity
+            const activity = this.mappingService.mapBoothVisit(contact.id, boothId, duration, interactions || []);
+            await this.devrevService.trackActivity(activity);
+            // Add booth visitor tag
+            await this.devrevService.addTagsToContact(contact.id, ['booth-visitor']);
+            res.status(200).json({ success: true, activity });
         }
         catch (error) {
             console.error('Booth activity webhook error:', error);

@@ -1,18 +1,23 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { WebhookHandler } from './handlers/webhooks';
+import { AirmeetService } from './services/airmeet';
+import { DevRevService } from './services/devrev';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
-
-// Middleware
 app.use(express.json());
 
-// Initialize webhook handler
-const webhookHandler = new WebhookHandler(process.env.AIRMEET_API_KEY || '');
+const port = process.env.PORT || 3000;
+
+// Initialize services
+const airmeetService = new AirmeetService(process.env.AIRMEET_API_KEY || '');
+const devrevService = new DevRevService(process.env.DEVREV_API_KEY || '');
+
+// Initialize webhook handler with both services
+const webhookHandler = new WebhookHandler(airmeetService, devrevService);
 
 // Root route
 app.get('/', (req, res) => {
@@ -20,17 +25,14 @@ app.get('/', (req, res) => {
     message: 'Airmeet-DevRev Snap-in API',
     version: '1.0.0',
     endpoints: {
-      webhooks: {
-        registration: '/webhooks/registration',
-        session: '/webhooks/session',
-        booth: '/webhooks/booth'
-      },
-      health: '/health'
+      '/webhooks/registration': 'Handle registration events',
+      '/webhooks/session': 'Handle session attendance events',
+      '/webhooks/booth': 'Handle booth activity events'
     }
   });
 });
 
-// Routes
+// Webhook routes
 app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
 app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
 app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
@@ -57,8 +59,10 @@ app.use((req: express.Request, res: express.Response) => {
   });
 });
 
-// Start server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Visit http://localhost:${port} to see available endpoints`);
+  console.log(`Server is running on port ${port}`);
+  console.log('Environment:', {
+    airmeetKeyConfigured: !!process.env.AIRMEET_API_KEY,
+    devrevKeyConfigured: !!process.env.DEVREV_API_KEY
+  });
 });

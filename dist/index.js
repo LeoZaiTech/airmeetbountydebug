@@ -7,34 +7,33 @@ const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const webhooks_1 = require("./handlers/webhooks");
 const airmeet_1 = require("./services/airmeet");
-const webhookVerification_1 = require("./middleware/webhookVerification");
+const devrev_1 = require("./services/devrev");
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 const port = process.env.PORT || 3000;
-// Initialize services and handlers
-const airmeetService = new airmeet_1.AirmeetService();
-const webhookHandler = new webhooks_1.WebhookHandler(airmeetService);
+// Initialize services
+const airmeetService = new airmeet_1.AirmeetService(process.env.AIRMEET_API_KEY || '');
+const devrevService = new devrev_1.DevRevService(process.env.DEVREV_API_KEY || '');
+// Initialize webhook handler with both services
+const webhookHandler = new webhooks_1.WebhookHandler(airmeetService, devrevService);
 // Root route
 app.get('/', (req, res) => {
     res.json({
         message: 'Airmeet-DevRev Snap-in API',
         version: '1.0.0',
         endpoints: {
-            webhooks: {
-                registration: '/webhooks/registration',
-                session: '/webhooks/session',
-                booth: '/webhooks/booth'
-            },
-            health: '/health'
+            '/webhooks/registration': 'Handle registration events',
+            '/webhooks/session': 'Handle session attendance events',
+            '/webhooks/booth': 'Handle booth activity events'
         }
     });
 });
-// Webhook routes with verification middleware
-app.post('/webhooks/registration', webhookVerification_1.verifyWebhook, webhookHandler.handleRegistration.bind(webhookHandler));
-app.post('/webhooks/session', webhookVerification_1.verifyWebhook, webhookHandler.handleSessionActivity.bind(webhookHandler));
-app.post('/webhooks/booth', webhookVerification_1.verifyWebhook, webhookHandler.handleBoothActivity.bind(webhookHandler));
+// Webhook routes
+app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
+app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
+app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'healthy' });
@@ -54,8 +53,10 @@ app.use((req, res) => {
         message: `Route ${req.method} ${req.path} not found`
     });
 });
-// Start server
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-    console.log(`Visit http://localhost:${port} to see available endpoints`);
+    console.log(`Server is running on port ${port}`);
+    console.log('Environment:', {
+        airmeetKeyConfigured: !!process.env.AIRMEET_API_KEY,
+        devrevKeyConfigured: !!process.env.DEVREV_API_KEY
+    });
 });
