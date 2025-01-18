@@ -6,14 +6,16 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const webhooks_1 = require("./handlers/webhooks");
+const airmeet_1 = require("./services/airmeet");
+const webhookVerification_1 = require("./middleware/webhookVerification");
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const port = process.env.PORT || 3000;
-// Middleware
 app.use(express_1.default.json());
-// Initialize webhook handler
-const webhookHandler = new webhooks_1.WebhookHandler(process.env.AIRMEET_API_KEY || '');
+const port = process.env.PORT || 3000;
+// Initialize services and handlers
+const airmeetService = new airmeet_1.AirmeetService();
+const webhookHandler = new webhooks_1.WebhookHandler(airmeetService);
 // Root route
 app.get('/', (req, res) => {
     res.json({
@@ -29,10 +31,10 @@ app.get('/', (req, res) => {
         }
     });
 });
-// Routes
-app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
-app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
-app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
+// Webhook routes with verification middleware
+app.post('/webhooks/registration', webhookVerification_1.verifyWebhook, webhookHandler.handleRegistration.bind(webhookHandler));
+app.post('/webhooks/session', webhookVerification_1.verifyWebhook, webhookHandler.handleSessionActivity.bind(webhookHandler));
+app.post('/webhooks/booth', webhookVerification_1.verifyWebhook, webhookHandler.handleBoothActivity.bind(webhookHandler));
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'healthy' });
