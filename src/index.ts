@@ -59,17 +59,12 @@ const webhookHandler = new WebhookHandler(
   notificationService
 );
 
-// Root route
+// Serve static files
+app.use(express.static('public'));
+
+// Root endpoint - serve the dashboard
 app.get('/', (req, res) => {
-  res.json({
-    message: 'Airmeet-DevRev Snap-in API',
-    version: '1.0.0',
-    endpoints: {
-      '/webhooks/registration': 'Handle registration events',
-      '/webhooks/session': 'Handle session attendance events',
-      '/webhooks/booth': 'Handle booth activity events'
-    }
-  });
+  res.sendFile('index.html', { root: './public' });
 });
 
 // Webhook routes
@@ -77,7 +72,7 @@ app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistrati
 app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
 app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
 
-// Debug routes
+// Debug endpoints
 app.get('/debug/status', (req, res) => {
   res.json({
     services: {
@@ -91,7 +86,7 @@ app.get('/debug/status', (req, res) => {
       }
     },
     notifications: {
-      enabled: notificationConfig.enabled,
+      enabled: true,
       templates: Object.keys(notificationConfig.templates),
       triggers: notificationConfig.triggers
     }
@@ -99,34 +94,13 @@ app.get('/debug/status', (req, res) => {
 });
 
 app.get('/debug/notifications/last', async (req, res) => {
-  try {
-    // This will be populated once we implement notification storage
-    const lastNotifications = await notificationService.getLastNotifications(5);
-    res.json({
-      success: true,
-      notifications: lastNotifications
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
+  const notifications = await notificationService.getLastNotifications(5);
+  res.json(notifications);
 });
 
 app.get('/debug/mappings', async (req, res) => {
-  try {
-    const sampleMapping = await mappingService.getLastMappedData(5);
-    res.json({
-      success: true,
-      mappings: sampleMapping
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
+  const mappings = await mappingService.getLastMappedData(5);
+  res.json(mappings);
 });
 
 // Health check endpoint

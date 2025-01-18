@@ -1,0 +1,36 @@
+.connection-status-connected {
+    background-color: #10B981;
+    color: white;
+}
+
+.connection-status-disconnected {
+    background-color: #EF4444;
+    color: white;
+}
+
+.status-success {
+    color: #10B981;
+}
+
+.status-pending {
+    color: #F59E0B;
+}
+
+.status-error {
+    color: #EF4444;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
