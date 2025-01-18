@@ -1,34 +1,38 @@
-import { DevRevContact, DevRevActivity } from '../types/devrev';
-import { AirmeetRegistration } from '../types/airmeet';
+import { 
+  DevRevContact, 
+  DevRevActivity,
+  AirmeetRegistration,
+  AirmeetSessionActivity,
+  AirmeetBoothActivity
+} from '../types';
 
 export class DataMappingService {
   // Map Airmeet registration to DevRev contact
   mapRegistrationToContact(registration: AirmeetRegistration): DevRevContact {
     return {
-      display_name: `${registration.first_name} ${registration.last_name}`,
+      id: undefined, // Will be set by DevRev
       email: registration.email,
-      phone: registration.phone,
-      company: registration.organization,
-      title: registration.job_title,
-      custom_fields: {
-        airmeet_registration_id: registration.id,
-        registration_date: registration.registration_date,
-        utm_source: registration.utm_source,
-        utm_medium: registration.utm_medium,
-        utm_campaign: registration.utm_campaign
+      firstName: registration.firstName,
+      lastName: registration.lastName,
+      customFields: {
+        airmeet_registration_id: registration.attendeeId,
+        registration_time: registration.registrationTime,
+        utm_source: registration.utmParameters?.source,
+        utm_medium: registration.utmParameters?.medium,
+        utm_campaign: registration.utmParameters?.campaign
       }
     };
   }
 
   // Map registration activity
-  mapRegistrationActivity(registration: AirmeetRegistration): DevRevActivity {
+  mapRegistrationActivity(registration: AirmeetRegistration, contactId: string): DevRevActivity {
     return {
-      contact_id: registration.id, // This will be updated with actual DevRev contact ID
+      contact_id: contactId,
       activity_type: 'registration',
       metadata: {
-        event_id: registration.event_id,
-        registration_date: registration.registration_date,
-        registration_status: registration.status
+        registration_id: registration.attendeeId,
+        registration_time: registration.registrationTime,
+        utm_parameters: registration.utmParameters
       },
       timestamp: new Date().toISOString()
     };
@@ -36,18 +40,17 @@ export class DataMappingService {
 
   // Map session attendance
   mapSessionAttendance(
-    contactId: string,
-    sessionId: string,
-    duration: number,
-    joinTime: string
+    activity: AirmeetSessionActivity,
+    contactId: string
   ): DevRevActivity {
     return {
       contact_id: contactId,
       activity_type: 'session_attendance',
       metadata: {
-        session_id: sessionId,
-        duration_minutes: duration,
-        join_time: joinTime
+        session_id: activity.sessionId,
+        join_time: activity.joinTime,
+        leave_time: activity.leaveTime,
+        time_spent: activity.timeSpent
       },
       timestamp: new Date().toISOString()
     };
@@ -55,18 +58,17 @@ export class DataMappingService {
 
   // Map booth visit
   mapBoothVisit(
-    contactId: string,
-    boothId: string,
-    duration: number,
-    interactions: any[]
+    activity: AirmeetBoothActivity,
+    contactId: string
   ): DevRevActivity {
     return {
       contact_id: contactId,
       activity_type: 'booth_visit',
       metadata: {
-        booth_id: boothId,
-        duration_minutes: duration,
-        interactions: interactions
+        booth_id: activity.boothId,
+        interaction_type: activity.interactionType,
+        lead_magnet_info: activity.leadMagnetInfo,
+        timestamp: activity.timestamp
       },
       timestamp: new Date().toISOString()
     };
@@ -86,9 +88,9 @@ export class DataMappingService {
           break;
         case 'booth_visit':
           tags.add('booth-visitor');
-          break;
-        case 'question_asked':
-          tags.add('engaged');
+          if (activity.metadata.lead_magnet_info) {
+            tags.add('lead-magnet-downloaded');
+          }
           break;
       }
     });

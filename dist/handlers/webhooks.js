@@ -24,8 +24,7 @@ class WebhookHandler {
             const contact = this.mappingService.mapRegistrationToContact(registration);
             const devrevContact = await this.devrevService.createOrUpdateContact(contact);
             // Track registration activity
-            const activity = this.mappingService.mapRegistrationActivity(registration);
-            activity.contact_id = devrevContact.id;
+            const activity = this.mappingService.mapRegistrationActivity(registration, devrevContact.id);
             await this.devrevService.trackActivity(activity);
             // Add appropriate tags
             const tags = this.mappingService.getActivityTags([activity]);
@@ -50,23 +49,23 @@ class WebhookHandler {
     }
     async handleSessionActivity(req, res) {
         try {
-            const { attendeeId, sessionId, duration, joinTime } = req.body;
-            console.log('Received session activity webhook:', { attendeeId, sessionId, duration, joinTime });
-            if (!attendeeId || !sessionId) {
+            const activity = req.body;
+            console.log('Received session activity webhook:', activity);
+            if (!activity.attendeeId || !activity.sessionId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
             // Find contact in DevRev
-            const contact = await this.devrevService.findContactByEmail(attendeeId);
+            const contact = await this.devrevService.findContactByEmail(activity.attendeeId);
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found in DevRev' });
             }
             // Track session activity
-            const activity = this.mappingService.mapSessionAttendance(contact.id, sessionId, duration, joinTime);
-            await this.devrevService.trackActivity(activity);
+            const devrevActivity = this.mappingService.mapSessionAttendance(activity, contact.id);
+            await this.devrevService.trackActivity(devrevActivity);
             // Add session attendee tag
             await this.devrevService.addTagsToContact(contact.id, ['session-attendee']);
-            res.status(200).json({ success: true, activity });
+            res.status(200).json({ success: true, activity: devrevActivity });
         }
         catch (error) {
             console.error('Session activity webhook error:', error);
@@ -78,23 +77,23 @@ class WebhookHandler {
     }
     async handleBoothActivity(req, res) {
         try {
-            const { attendeeId, boothId, duration, interactions } = req.body;
-            console.log('Received booth activity webhook:', { attendeeId, boothId, duration });
-            if (!attendeeId || !boothId) {
+            const activity = req.body;
+            console.log('Received booth activity webhook:', activity);
+            if (!activity.attendeeId || !activity.boothId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
             // Find contact in DevRev
-            const contact = await this.devrevService.findContactByEmail(attendeeId);
+            const contact = await this.devrevService.findContactByEmail(activity.attendeeId);
             if (!contact) {
                 return res.status(404).json({ error: 'Contact not found in DevRev' });
             }
             // Track booth activity
-            const activity = this.mappingService.mapBoothVisit(contact.id, boothId, duration, interactions || []);
-            await this.devrevService.trackActivity(activity);
+            const devrevActivity = this.mappingService.mapBoothVisit(activity, contact.id);
+            await this.devrevService.trackActivity(devrevActivity);
             // Add booth visitor tag
             await this.devrevService.addTagsToContact(contact.id, ['booth-visitor']);
-            res.status(200).json({ success: true, activity });
+            res.status(200).json({ success: true, activity: devrevActivity });
         }
         catch (error) {
             console.error('Booth activity webhook error:', error);
