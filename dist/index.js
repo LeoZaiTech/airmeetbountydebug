@@ -10,6 +10,7 @@ const airmeet_1 = require("./services/airmeet");
 const devrev_1 = require("./services/devrev");
 const mapping_1 = require("./services/mapping");
 const notification_1 = require("./services/notification");
+const webhook_verify_1 = require("./middleware/webhook-verify");
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -57,9 +58,9 @@ app.get('/', (req, res) => {
     res.sendFile('index.html', { root: './public' });
 });
 // Webhook routes
-app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
-app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
-app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
+app.post('/webhooks/registration', webhook_verify_1.verifyWebhookSignature, (req, res) => webhookHandler.handleRegistration(req, res));
+app.post('/webhooks/session', webhook_verify_1.verifyWebhookSignature, (req, res) => webhookHandler.handleSessionActivity(req, res));
+app.post('/webhooks/booth', webhook_verify_1.verifyWebhookSignature, (req, res) => webhookHandler.handleBoothActivity(req, res));
 // Debug endpoints
 app.get('/debug/status', (req, res) => {
     res.json({

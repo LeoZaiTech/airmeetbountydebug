@@ -6,6 +6,7 @@ import { DevRevService } from './services/devrev';
 import { DataMappingService } from './services/mapping';
 import { NotificationService } from './services/notification';
 import { NotificationConfig } from './types';
+import { verifyWebhookSignature } from './middleware/webhook-verify';
 
 // Load environment variables
 dotenv.config();
@@ -68,9 +69,9 @@ app.get('/', (req, res) => {
 });
 
 // Webhook routes
-app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
-app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
-app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
+app.post('/webhooks/registration', verifyWebhookSignature, (req, res) => webhookHandler.handleRegistration(req, res));
+app.post('/webhooks/session', verifyWebhookSignature, (req, res) => webhookHandler.handleSessionActivity(req, res));
+app.post('/webhooks/booth', verifyWebhookSignature, (req, res) => webhookHandler.handleBoothActivity(req, res));
 
 // Debug endpoints
 app.get('/debug/status', (req, res) => {
