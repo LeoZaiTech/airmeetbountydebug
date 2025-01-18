@@ -14,7 +14,7 @@ const notification_1 = require("./services/notification");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 // Initialize services
 const airmeetService = new airmeet_1.AirmeetService(process.env.AIRMEET_API_KEY || '');
 const devrevService = new devrev_1.DevRevService(process.env.DEVREV_API_KEY || '');
@@ -66,6 +66,57 @@ app.get('/', (req, res) => {
 app.post('/webhooks/registration', (req, res) => webhookHandler.handleRegistration(req, res));
 app.post('/webhooks/session', (req, res) => webhookHandler.handleSessionActivity(req, res));
 app.post('/webhooks/booth', (req, res) => webhookHandler.handleBoothActivity(req, res));
+// Debug routes
+app.get('/debug/status', (req, res) => {
+    res.json({
+        services: {
+            airmeet: {
+                status: 'connected',
+                apiKey: process.env.AIRMEET_API_KEY ? 'configured' : 'missing'
+            },
+            devrev: {
+                status: 'connected',
+                apiKey: process.env.DEVREV_API_KEY ? 'configured' : 'missing'
+            }
+        },
+        notifications: {
+            enabled: notificationConfig.enabled,
+            templates: Object.keys(notificationConfig.templates),
+            triggers: notificationConfig.triggers
+        }
+    });
+});
+app.get('/debug/notifications/last', async (req, res) => {
+    try {
+        // This will be populated once we implement notification storage
+        const lastNotifications = await notificationService.getLastNotifications(5);
+        res.json({
+            success: true,
+            notifications: lastNotifications
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+app.get('/debug/mappings', async (req, res) => {
+    try {
+        const sampleMapping = await mappingService.getLastMappedData(5);
+        res.json({
+            success: true,
+            mappings: sampleMapping
+        });
+    }
+    catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'healthy' });
@@ -87,6 +138,10 @@ app.use((req, res) => {
 });
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
+    console.log('Debug endpoints:');
+    console.log(`- Status: http://localhost:${port}/debug/status`);
+    console.log(`- Last notifications: http://localhost:${port}/debug/notifications/last`);
+    console.log(`- Last mappings: http://localhost:${port}/debug/mappings`);
     console.log('Environment:', {
         airmeetKeyConfigured: !!process.env.AIRMEET_API_KEY,
         devrevKeyConfigured: !!process.env.DEVREV_API_KEY

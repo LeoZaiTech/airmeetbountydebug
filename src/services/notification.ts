@@ -11,6 +11,10 @@ import {
 export class NotificationService {
   private config: NotificationConfig;
 
+  // Store last N notifications for debugging
+  private lastNotifications: Notification[] = [];
+  private readonly MAX_STORED_NOTIFICATIONS = 100;
+
   constructor(config: NotificationConfig) {
     this.config = config;
   }
@@ -36,6 +40,17 @@ export class NotificationService {
     return notification;
   }
 
+  private storeNotification(notification: Notification) {
+    this.lastNotifications.unshift(notification);
+    if (this.lastNotifications.length > this.MAX_STORED_NOTIFICATIONS) {
+      this.lastNotifications.pop();
+    }
+  }
+
+  async getLastNotifications(count: number = 5): Promise<Notification[]> {
+    return this.lastNotifications.slice(0, count);
+  }
+
   private async sendNotification(notification: Notification): Promise<void> {
     try {
       const template = this.config.templates[notification.templateId];
@@ -53,6 +68,15 @@ export class NotificationService {
 
       // Handle conditional blocks
       message = this.processConditionalBlocks(message, notification.variables);
+
+      // Store notification for debugging
+      this.storeNotification({
+        ...notification,
+        variables: {
+          ...notification.variables,
+          renderedMessage: message
+        }
+      });
 
       // TODO: Implement actual sending logic using DevRev API
       console.log(`[Notification] To: ${notification.recipientId}`);

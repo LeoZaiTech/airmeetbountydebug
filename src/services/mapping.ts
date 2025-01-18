@@ -7,9 +7,34 @@ import {
 } from '../types';
 
 export class DataMappingService {
+  // Store last N mapped items for debugging
+  private lastMappedItems: Array<{
+    source: any;
+    mapped: DevRevContact | DevRevActivity;
+    timestamp: string;
+    type: 'contact' | 'activity';
+  }> = [];
+  private readonly MAX_STORED_ITEMS = 100;
+
+  private storeMappedItem(source: any, mapped: DevRevContact | DevRevActivity, type: 'contact' | 'activity') {
+    this.lastMappedItems.unshift({
+      source,
+      mapped,
+      timestamp: new Date().toISOString(),
+      type
+    });
+    if (this.lastMappedItems.length > this.MAX_STORED_ITEMS) {
+      this.lastMappedItems.pop();
+    }
+  }
+
+  async getLastMappedData(count: number = 5) {
+    return this.lastMappedItems.slice(0, count);
+  }
+
   // Map Airmeet registration to DevRev contact
   mapRegistrationToContact(registration: AirmeetRegistration): DevRevContact {
-    return {
+    const contact: DevRevContact = {
       id: undefined, // Will be set by DevRev
       display_name: `${registration.firstName} ${registration.lastName}`,
       email: registration.email,
@@ -21,11 +46,14 @@ export class DataMappingService {
         utm_campaign: registration.utmParameters?.campaign
       }
     };
+
+    this.storeMappedItem(registration, contact, 'contact');
+    return contact;
   }
 
   // Map registration activity
   mapRegistrationActivity(registration: AirmeetRegistration, contactId: string): DevRevActivity {
-    return {
+    const activity: DevRevActivity = {
       contact_id: contactId,
       activity_type: 'registration',
       metadata: {
@@ -35,6 +63,9 @@ export class DataMappingService {
       },
       timestamp: new Date().toISOString()
     };
+
+    this.storeMappedItem(registration, activity, 'activity');
+    return activity;
   }
 
   // Map session attendance
@@ -42,7 +73,7 @@ export class DataMappingService {
     activity: AirmeetSessionActivity,
     contactId: string
   ): DevRevActivity {
-    return {
+    const mappedActivity: DevRevActivity = {
       contact_id: contactId,
       activity_type: 'session_attendance',
       metadata: {
@@ -53,6 +84,9 @@ export class DataMappingService {
       },
       timestamp: new Date().toISOString()
     };
+
+    this.storeMappedItem(activity, mappedActivity, 'activity');
+    return mappedActivity;
   }
 
   // Map booth visit
@@ -60,7 +94,7 @@ export class DataMappingService {
     activity: AirmeetBoothActivity,
     contactId: string
   ): DevRevActivity {
-    return {
+    const mappedActivity: DevRevActivity = {
       contact_id: contactId,
       activity_type: 'booth_visit',
       metadata: {
@@ -71,6 +105,9 @@ export class DataMappingService {
       },
       timestamp: new Date().toISOString()
     };
+
+    this.storeMappedItem(activity, mappedActivity, 'activity');
+    return mappedActivity;
   }
 
   // Get tags based on activities
