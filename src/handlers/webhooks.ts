@@ -2,31 +2,29 @@ import { Request, Response } from 'express';
 import { AirmeetService } from '../services/airmeet';
 import { DevRevService } from '../services/devrev';
 import { DataMappingService } from '../services/mapping';
+import { NotificationService } from '../services/notification';
 import { AirmeetRegistration, AirmeetSessionActivity, AirmeetBoothActivity } from '../types';
 
 export class WebhookHandler {
-  private mappingService: DataMappingService;
-
   constructor(
     private airmeetService: AirmeetService,
-    private devrevService: DevRevService
-  ) {
-    this.mappingService = new DataMappingService();
-  }
+    private devrevService: DevRevService,
+    private mappingService: DataMappingService,
+    private notificationService: NotificationService
+  ) {}
 
   async handleRegistration(req: Request, res: Response) {
     try {
-      const { attendeeId } = req.body;
-      console.log('Received registration webhook for attendeeId:', attendeeId);
+      const { id, eventId } = req.body;
+      console.log('Received registration webhook for id:', id);
       
-      if (!attendeeId) {
-        console.error('Missing attendeeId in request body');
-        return res.status(400).json({ error: 'Missing attendeeId in request body' });
+      if (!id || !eventId) {
+        console.error('Missing required fields in request body');
+        return res.status(400).json({ error: 'Missing required fields in request body' });
       }
 
       // Get registration data from Airmeet
-      console.log('Fetching registration data from Airmeet API...');
-      const registration: AirmeetRegistration = await this.airmeetService.getRegistration(attendeeId);
+      const registration: AirmeetRegistration = await this.airmeetService.getRegistration(id);
       console.log('Successfully retrieved registration data:', registration);
 
       // Map and create/update contact in DevRev
@@ -41,6 +39,9 @@ export class WebhookHandler {
       const tags = this.mappingService.getActivityTags([activity]);
       await this.devrevService.addTagsToContact(devrevContact.id!, tags);
       
+      // Send notification
+      await this.notificationService.handleRegistration(registration, eventId);
+
       res.status(200).json({ 
         success: true, 
         contact: devrevContact,
@@ -54,17 +55,17 @@ export class WebhookHandler {
       });
       res.status(500).json({ 
         error: 'Internal server error',
-        details: error.message
+        details: error.message 
       });
     }
   }
 
   async handleSessionActivity(req: Request, res: Response) {
     try {
-      const activity: AirmeetSessionActivity = req.body;
+      const activity: AirmeetSessionActivity & { eventId: string } = req.body;
       console.log('Received session activity webhook:', activity);
 
-      if (!activity.attendeeId || !activity.sessionId) {
+      if (!activity.attendeeId || !activity.sessionId || !activity.eventId) {
         console.error('Missing required fields in request body');
         return res.status(400).json({ error: 'Missing required fields in request body' });
       }
@@ -82,6 +83,9 @@ export class WebhookHandler {
       // Add session attendee tag
       await this.devrevService.addTagsToContact(contact.id!, ['session-attendee']);
 
+      // Send notification
+      await this.notificationService.handleSessionActivity(activity, activity.eventId);
+
       res.status(200).json({ success: true, activity: devrevActivity });
     } catch (error: any) {
       console.error('Session activity webhook error:', error);
@@ -94,10 +98,10 @@ export class WebhookHandler {
 
   async handleBoothActivity(req: Request, res: Response) {
     try {
-      const activity: AirmeetBoothActivity = req.body;
+      const activity: AirmeetBoothActivity & { eventId: string } = req.body;
       console.log('Received booth activity webhook:', activity);
 
-      if (!activity.attendeeId || !activity.boothId) {
+      if (!activity.attendeeId || !activity.boothId || !activity.eventId) {
         console.error('Missing required fields in request body');
         return res.status(400).json({ error: 'Missing required fields in request body' });
       }
@@ -114,6 +118,9 @@ export class WebhookHandler {
 
       // Add booth visitor tag
       await this.devrevService.addTagsToContact(contact.id!, ['booth-visitor']);
+
+      // Send notification
+      await this.notificationService.handleBoothActivity(activity, activity.eventId);
 
       res.status(200).json({ success: true, activity: devrevActivity });
     } catch (error: any) {

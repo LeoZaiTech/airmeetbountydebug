@@ -1,24 +1,23 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WebhookHandler = void 0;
-const mapping_1 = require("../services/mapping");
 class WebhookHandler {
-    constructor(airmeetService, devrevService) {
+    constructor(airmeetService, devrevService, mappingService, notificationService) {
         this.airmeetService = airmeetService;
         this.devrevService = devrevService;
-        this.mappingService = new mapping_1.DataMappingService();
+        this.mappingService = mappingService;
+        this.notificationService = notificationService;
     }
     async handleRegistration(req, res) {
         try {
-            const { attendeeId } = req.body;
-            console.log('Received registration webhook for attendeeId:', attendeeId);
-            if (!attendeeId) {
-                console.error('Missing attendeeId in request body');
-                return res.status(400).json({ error: 'Missing attendeeId in request body' });
+            const { id, eventId } = req.body;
+            console.log('Received registration webhook for id:', id);
+            if (!id || !eventId) {
+                console.error('Missing required fields in request body');
+                return res.status(400).json({ error: 'Missing required fields in request body' });
             }
             // Get registration data from Airmeet
-            console.log('Fetching registration data from Airmeet API...');
-            const registration = await this.airmeetService.getRegistration(attendeeId);
+            const registration = await this.airmeetService.getRegistration(id);
             console.log('Successfully retrieved registration data:', registration);
             // Map and create/update contact in DevRev
             const contact = this.mappingService.mapRegistrationToContact(registration);
@@ -29,6 +28,8 @@ class WebhookHandler {
             // Add appropriate tags
             const tags = this.mappingService.getActivityTags([activity]);
             await this.devrevService.addTagsToContact(devrevContact.id, tags);
+            // Send notification
+            await this.notificationService.handleRegistration(registration, eventId);
             res.status(200).json({
                 success: true,
                 contact: devrevContact,
@@ -51,7 +52,7 @@ class WebhookHandler {
         try {
             const activity = req.body;
             console.log('Received session activity webhook:', activity);
-            if (!activity.attendeeId || !activity.sessionId) {
+            if (!activity.attendeeId || !activity.sessionId || !activity.eventId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
@@ -65,6 +66,8 @@ class WebhookHandler {
             await this.devrevService.trackActivity(devrevActivity);
             // Add session attendee tag
             await this.devrevService.addTagsToContact(contact.id, ['session-attendee']);
+            // Send notification
+            await this.notificationService.handleSessionActivity(activity, activity.eventId);
             res.status(200).json({ success: true, activity: devrevActivity });
         }
         catch (error) {
@@ -79,7 +82,7 @@ class WebhookHandler {
         try {
             const activity = req.body;
             console.log('Received booth activity webhook:', activity);
-            if (!activity.attendeeId || !activity.boothId) {
+            if (!activity.attendeeId || !activity.boothId || !activity.eventId) {
                 console.error('Missing required fields in request body');
                 return res.status(400).json({ error: 'Missing required fields in request body' });
             }
@@ -93,6 +96,8 @@ class WebhookHandler {
             await this.devrevService.trackActivity(devrevActivity);
             // Add booth visitor tag
             await this.devrevService.addTagsToContact(contact.id, ['booth-visitor']);
+            // Send notification
+            await this.notificationService.handleBoothActivity(activity, activity.eventId);
             res.status(200).json({ success: true, activity: devrevActivity });
         }
         catch (error) {

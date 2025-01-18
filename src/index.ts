@@ -3,6 +3,9 @@ import dotenv from 'dotenv';
 import { WebhookHandler } from './handlers/webhooks';
 import { AirmeetService } from './services/airmeet';
 import { DevRevService } from './services/devrev';
+import { DataMappingService } from './services/mapping';
+import { NotificationService } from './services/notification';
+import { NotificationConfig } from './types';
 
 // Load environment variables
 dotenv.config();
@@ -15,9 +18,25 @@ const port = process.env.PORT || 3000;
 // Initialize services
 const airmeetService = new AirmeetService(process.env.AIRMEET_API_KEY || '');
 const devrevService = new DevRevService(process.env.DEVREV_API_KEY || '');
+const mappingService = new DataMappingService();
 
-// Initialize webhook handler with both services
-const webhookHandler = new WebhookHandler(airmeetService, devrevService);
+// Initialize notification config
+const notificationConfig: NotificationConfig = {
+  triggers: [],
+  templates: {},
+  accountOwnerMapping: {},
+  enabled: true
+};
+
+const notificationService = new NotificationService(notificationConfig);
+
+// Initialize webhook handler with all services
+const webhookHandler = new WebhookHandler(
+  airmeetService,
+  devrevService,
+  mappingService,
+  notificationService
+);
 
 // Root route
 app.get('/', (req, res) => {
