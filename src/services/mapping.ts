@@ -1,9 +1,9 @@
 import { 
-  DevRevContact, 
-  DevRevActivity,
-  AirmeetRegistration,
-  AirmeetSessionActivity,
-  AirmeetBoothActivity
+  AirmeetRegistration, 
+  AirmeetSessionActivity, 
+  AirmeetBoothActivity,
+  DevRevContact,
+  DevRevActivity
 } from '../types';
 
 export class DataMappingService {
@@ -11,10 +11,9 @@ export class DataMappingService {
   mapRegistrationToContact(registration: AirmeetRegistration): DevRevContact {
     return {
       id: undefined, // Will be set by DevRev
+      display_name: `${registration.firstName} ${registration.lastName}`,
       email: registration.email,
-      firstName: registration.firstName,
-      lastName: registration.lastName,
-      customFields: {
+      custom_fields: {
         airmeet_registration_id: registration.attendeeId,
         registration_time: registration.registrationTime,
         utm_source: registration.utmParameters?.source,
