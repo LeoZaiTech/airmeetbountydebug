@@ -81,13 +81,21 @@ app.get('/debug/status', (req, res) => {
         }
     });
 });
+app.get('/debug/mappings', async (req, res) => {
+    try {
+        const count = parseInt(req.query.count) || 10;
+        const mappings = await mappingService.getLastMappedData(count);
+        console.log('Returning mappings:', mappings);
+        res.json(mappings);
+    }
+    catch (error) {
+        console.error('Error getting mappings:', error);
+        res.status(500).json({ error: 'Failed to get mappings' });
+    }
+});
 app.get('/debug/notifications/last', async (req, res) => {
     const notifications = await notificationService.getLastNotifications(5);
     res.json(notifications);
-});
-app.get('/debug/mappings', async (req, res) => {
-    const mappings = await mappingService.getLastMappedData(5);
-    res.json(mappings);
 });
 // Health check endpoint
 app.get('/health', (req, res) => {

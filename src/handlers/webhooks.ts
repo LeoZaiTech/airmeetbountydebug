@@ -14,50 +14,36 @@ export class WebhookHandler {
   ) {}
 
   async handleRegistration(req: Request, res: Response) {
-    console.log('Registration webhook received:', req.body);
+    console.log('Registration webhook received:', JSON.stringify(req.body, null, 2));
     try {
-      const { id, eventId } = req.body;
-      console.log('Received registration webhook for id:', id);
-      
-      if (!id || !eventId) {
-        console.error('Missing required fields in request body');
-        return res.status(400).json({ error: 'Missing required fields in request body' });
-      }
+      // Map incoming payload to AirmeetRegistration format
+      const registration: AirmeetRegistration = {
+        id: req.body.id,
+        event_id: req.body.eventId,
+        first_name: req.body.firstName,
+        last_name: req.body.lastName,
+        email: req.body.email,
+        registration_date: req.body.registrationTime,
+        status: 'registered',
+        utm_source: req.body.utmParameters?.source,
+        utm_medium: req.body.utmParameters?.medium,
+        utm_campaign: req.body.utmParameters?.campaign
+      };
 
-      // Get registration data from Airmeet
-      const registration: AirmeetRegistration = await this.airmeetService.getRegistration(id);
-      console.log('Successfully retrieved registration data:', registration);
+      console.log('Mapped registration data:', JSON.stringify(registration, null, 2));
 
-      // Map and create/update contact in DevRev
-      const contact = this.mappingService.mapRegistrationToContact(registration);
-      const devrevContact = await this.devrevService.createOrUpdateContact(contact);
-      
-      // Track registration activity
-      const activity = this.mappingService.mapRegistrationActivity(registration, devrevContact.id!);
-      await this.devrevService.trackActivity(activity);
+      // Map the registration data to DevRev contact
+      const mappedContact = this.mappingService.mapRegistrationToContact(registration);
+      console.log('Mapped contact:', JSON.stringify(mappedContact, null, 2));
 
-      // Add appropriate tags
-      const tags = this.mappingService.getActivityTags([activity]);
-      await this.devrevService.addTagsToContact(devrevContact.id!, tags);
-      
-      // Send notification
-      await this.notificationService.handleRegistration(registration, eventId);
+      // Create or update contact in DevRev
+      const contact = await this.devrevService.createOrUpdateContact(mappedContact);
+      console.log('Created/Updated contact in DevRev:', JSON.stringify(contact, null, 2));
 
-      res.status(200).json({ 
-        success: true, 
-        contact: devrevContact,
-        activity: activity
-      });
-    } catch (error: any) {
-      console.error('Registration webhook error:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      res.status(500).json({ 
-        error: 'Internal server error',
-        details: error.message 
-      });
+      res.json({ success: true, contact });
+    } catch (error) {
+      console.error('Error handling registration webhook:', error);
+      res.status(500).json({ error: 'Failed to process registration' });
     }
   }
 

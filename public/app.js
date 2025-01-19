@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
         registrationsTable: !!registrationsTable
     });
 
+    // Keep track of displayed registrations
+    const displayedRegistrations = new Set();
+
     // Update connection status
     async function updateConnectionStatus() {
         try {
@@ -41,44 +44,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // Add a new registration row
     function addRegistrationRow(registration) {
         console.log('Adding registration row:', registration);
-        const row = document.createElement('tr');
-        row.className = 'animate-fade-in';
         
-        row.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                ${registration.firstName || ''} ${registration.lastName || ''}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ${registration.email || ''}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ${formatDate(registration.registrationTime)}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                ${registration.utmParameters?.source || 'Direct'}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                <span class="status-success px-2 py-1 rounded-full text-xs">Registered</span>
-            </td>
-        `;
+        // Create unique ID for this registration
+        const registrationId = registration.id || `${registration.email}-${registration.registration_date}`;
         
-        registrationsTable.appendChild(row);
-        console.log('Row added to table');
+        // Skip if already displayed
+        if (displayedRegistrations.has(registrationId)) {
+            console.log('Registration already displayed:', registrationId);
+            return;
+        }
+
+        try {
+            const tbody = registrationsTable.getElementsByTagName('tbody')[0];
+            const row = document.createElement('tr');
+            row.className = 'bg-white border-b hover:bg-gray-50';
+            
+            // Format registration data
+            const data = {
+                name: `${registration.first_name} ${registration.last_name}`,
+                email: registration.email,
+                organization: registration.organization || '-',
+                jobTitle: registration.job_title || '-',
+                registrationDate: formatDate(registration.registration_date),
+                status: registration.status || 'registered'
+            };
+            
+            // Add cells
+            Object.values(data).forEach(value => {
+                const cell = document.createElement('td');
+                cell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                cell.textContent = value;
+                row.appendChild(cell);
+            });
+            
+            // Add to table and tracking set
+            tbody.insertBefore(row, tbody.firstChild);
+            displayedRegistrations.add(registrationId);
+            console.log('Successfully added registration row:', registrationId);
+        } catch (error) {
+            console.error('Error adding registration row:', error);
+        }
     }
 
     // Fetch recent registrations
     async function fetchRecentRegistrations() {
         try {
             console.log('Fetching recent registrations...');
-            const response = await fetch('/debug/mappings');
+            const response = await fetch('/debug/mappings?count=20');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const data = await response.json();
             console.log('Received mappings data:', data);
             
-            // Clear existing rows
-            registrationsTable.innerHTML = '';
-            console.log('Cleared existing rows');
-            
-            // Add new rows
+            // Add new rows without clearing existing ones
             if (Array.isArray(data)) {
                 data.forEach(item => {
                     console.log('Processing item:', item);

@@ -17,35 +17,51 @@ export class DataMappingService {
   private readonly MAX_STORED_ITEMS = 100;
 
   private storeMappedItem(source: any, mapped: DevRevContact | DevRevActivity, type: 'contact' | 'activity') {
+    console.log('Storing mapped item:', { source, mapped, type });
     this.lastMappedItems.unshift({
       source,
       mapped,
       timestamp: new Date().toISOString(),
       type
     });
+    console.log('Current lastMappedItems:', this.lastMappedItems);
     if (this.lastMappedItems.length > this.MAX_STORED_ITEMS) {
       this.lastMappedItems.pop();
     }
   }
 
   async getLastMappedData(count: number = 5) {
+    console.log('Getting last mapped data, count:', count);
+    console.log('Current lastMappedItems:', this.lastMappedItems);
     return this.lastMappedItems.slice(0, count);
   }
 
   // Map Airmeet registration to DevRev contact
   mapRegistrationToContact(registration: AirmeetRegistration): DevRevContact {
     const contact: DevRevContact = {
-      id: undefined, // Will be set by DevRev
-      display_name: `${registration.firstName} ${registration.lastName}`,
+      display_name: `${registration.first_name} ${registration.last_name}`,
       email: registration.email,
       custom_fields: {
-        airmeet_registration_id: registration.attendeeId,
-        registration_time: registration.registrationTime,
-        utm_source: registration.utmParameters?.source,
-        utm_medium: registration.utmParameters?.medium,
-        utm_campaign: registration.utmParameters?.campaign
+        airmeet_id: registration.id,
+        event_id: registration.event_id,
+        registration_date: registration.registration_date,
+        status: registration.status,
+        utm_source: registration.utm_source,
+        utm_medium: registration.utm_medium,
+        utm_campaign: registration.utm_campaign,
       }
     };
+
+    // Add optional fields if present
+    if (registration.phone) {
+      contact.phone = registration.phone;
+    }
+    if (registration.organization) {
+      contact.organization = registration.organization;
+    }
+    if (registration.job_title) {
+      contact.title = registration.job_title;
+    }
 
     this.storeMappedItem(registration, contact, 'contact');
     return contact;
