@@ -39,16 +39,14 @@ export class DataMappingService {
   // Map Airmeet registration to DevRev contact
   mapRegistrationToContact(registration: AirmeetRegistration): DevRevContact {
     const contact: DevRevContact = {
-      display_name: `${registration.first_name} ${registration.last_name}`,
+      display_name: `${registration.firstName} ${registration.lastName}`,
       email: registration.email,
       custom_fields: {
-        airmeet_id: registration.id,
-        event_id: registration.event_id,
-        registration_date: registration.registration_date,
-        status: registration.status,
-        utm_source: registration.utm_source,
-        utm_medium: registration.utm_medium,
-        utm_campaign: registration.utm_campaign,
+        airmeet_id: registration.attendeeId,
+        registration_date: registration.registrationTime,
+        utm_source: registration.utmParameters?.source,
+        utm_medium: registration.utmParameters?.medium,
+        utm_campaign: registration.utmParameters?.campaign,
       }
     };
 
@@ -57,7 +55,7 @@ export class DataMappingService {
       contact.phone = registration.phone;
     }
     if (registration.organization) {
-      contact.organization = registration.organization;
+      contact.company = registration.organization;
     }
     if (registration.job_title) {
       contact.title = registration.job_title;
@@ -75,7 +73,7 @@ export class DataMappingService {
       metadata: {
         registration_id: registration.attendeeId,
         registration_time: registration.registrationTime,
-        utm_parameters: registration.utmParameters
+        utm_parameters: registration.utmParameters || {}
       },
       timestamp: new Date().toISOString()
     };

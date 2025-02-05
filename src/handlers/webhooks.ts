@@ -18,7 +18,7 @@ export class WebhookHandler {
     try {
       // Map incoming payload to AirmeetRegistration format
       const registration: AirmeetRegistration = {
-        id: req.body.id,
+        attendeeId: req.body.id,
         event_id: req.body.eventId,
         first_name: req.body.firstName,
         last_name: req.body.lastName,

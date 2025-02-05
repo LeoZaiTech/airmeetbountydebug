@@ -5,6 +5,9 @@ export interface AirmeetRegistration {
   firstName: string;
   lastName: string;
   registrationTime: string;
+  phone?: string;
+  organization?: string;
+  job_title?: string;
   utmParameters?: {
     source?: string;
     medium?: string;
