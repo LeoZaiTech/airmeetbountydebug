@@ -14,15 +14,15 @@ class WebhookHandler {
             // Map incoming payload to AirmeetRegistration format
             const registration = {
                 attendeeId: req.body.id,
-                event_id: req.body.eventId,
-                first_name: req.body.firstName,
-                last_name: req.body.lastName,
+                firstName: req.body.firstName,
+                lastName: req.body.lastName,
                 email: req.body.email,
-                registration_date: req.body.registrationTime,
-                status: 'registered',
-                utm_source: req.body.utmParameters?.source,
-                utm_medium: req.body.utmParameters?.medium,
-                utm_campaign: req.body.utmParameters?.campaign
+                registrationTime: req.body.registrationTime,
+                utmParameters: {
+                    source: req.body.utmParameters?.source,
+                    medium: req.body.utmParameters?.medium,
+                    campaign: req.body.utmParameters?.campaign
+                }
             };
             console.log('Mapped registration data:', JSON.stringify(registration, null, 2));
             // Map the registration data to DevRev contact
